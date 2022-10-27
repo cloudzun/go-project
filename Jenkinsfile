@@ -120,11 +120,11 @@ spec:
 
           }
           steps {
-            git(url: 'git@http://192.168.14.244/kubernetes/go-project.git', branch: env.gitlabBranch, changelog: true, poll: true, credentialsId: 'gitlab-key')
+            git(url: 'http://192.168.14.244/kubernetes/go-project.git', branch: env.gitlabBranch, changelog: true, poll: true, credentialsId: 'gitlab-key')
             script {
               COMMIT_ID = sh(returnStdout: true, script: "git log -n 1 --pretty=format:'%h'").trim()
               TAG = BUILD_TAG + '-' + COMMIT_ID
-              println "Current branch is ${BRANCH}, Commit ID is ${COMMIT_ID}, Image TAG is ${TAG}"
+              println "Current branch is ${env.gitlabBranch}, Commit ID is ${COMMIT_ID}, Image TAG is ${TAG}"
             }
 
           }
