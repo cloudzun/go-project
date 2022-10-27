@@ -1,7 +1,7 @@
 pipeline {
   agent {
     kubernetes {
-      cloud 'kubernetes-study'
+      cloud 'study-kubernetes'
       slaveConnectTimeout 1200
       workspaceVolume hostPathWorkspaceVolume(hostPath: "/opt/workspace", readOnly: false)
       yaml '''
@@ -26,14 +26,14 @@ spec:
           value: "en_US.UTF-8"
         - name: "LANG"
           value: "en_US.UTF-8"
-      image: "registry.cn-beijing.aliyuncs.com/citools/node:lts"
+      image: "registry.cn-beijing.aliyuncs.com/citools/golang:1.15"
       imagePullPolicy: "IfNotPresent"
       name: "build"
       tty: true
       volumeMounts:
         - mountPath: "/etc/localtime"
           name: "localtime"
-        - mountPath: "/root/.m2/"
+        - mountPath: "/go/pkg/"
           name: "cachedir"
           readOnly: false
     - command:
@@ -86,7 +86,7 @@ spec:
       name: "localtime"
     - name: "cachedir"
       hostPath:
-        path: "/opt/m2"
+        path: "/opt/gopkg"
 '''
     }
 }
@@ -101,7 +101,7 @@ spec:
 
           }
           steps {
-            git(changelog: true, poll: true, url: 'git@10.103.236.251:kubernetes/vue-project.git', branch: "${BRANCH}", credentialsId: 'gitlab-key')
+            git(changelog: true, poll: true, url: 'http://192.168.14.244/kubernetes/go-project.git', branch: "${BRANCH}", credentialsId: 'gitlab-key')
             script {
               COMMIT_ID = sh(returnStdout: true, script: "git log -n 1 --pretty=format:'%h'").trim()
               TAG = BUILD_TAG + '-' + COMMIT_ID
@@ -120,7 +120,7 @@ spec:
 
           }
           steps {
-            git(url: 'git@10.103.236.251:kubernetes/vue-project.git', branch: env.gitlabBranch, changelog: true, poll: true, credentialsId: 'gitlab-key')
+            git(url: 'git@http://192.168.14.244/kubernetes/go-project.git', branch: env.gitlabBranch, changelog: true, poll: true, credentialsId: 'gitlab-key')
             script {
               COMMIT_ID = sh(returnStdout: true, script: "git log -n 1 --pretty=format:'%h'").trim()
               TAG = BUILD_TAG + '-' + COMMIT_ID
@@ -137,8 +137,9 @@ spec:
       steps {
         container(name: 'build') {
             sh """
-              npm install --registry=https://registry.npm.taobao.org
-              npm run build
+              export GO111MODULE=on
+              go env -w GOPROXY=https://goproxy.cn,direct
+              go build
             """
         }
       }
@@ -162,7 +163,7 @@ spec:
 
     stage('Deploying to K8s') {
       environment {
-        MY_KUBECONFIG = credentials('study-k8s-kubeconfig')
+        MY_KUBECONFIG = credentials('study-kubernetes')
     }
       steps {
         container(name: 'kubectl'){
@@ -176,9 +177,9 @@ spec:
   }
   environment {
     COMMIT_ID = ""
-    HARBOR_ADDRESS = "10.103.236.204"
+    HARBOR_ADDRESS = "192.168.14.244:5000"
     REGISTRY_DIR = "kubernetes"
-    IMAGE_NAME = "vue-project"
+    IMAGE_NAME = "go-project"
     NAMESPACE = "kubernetes"
     TAG = ""
   }
